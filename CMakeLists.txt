@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.5)
 project(libmotioncapture)
 
-# define some options
+# Enable C++14
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Options
 option(LIBMOTIONCAPTURE_BUILD_PYTHON_BINDINGS "Generate Python Bindings" ON)
 option(LIBMOTIONCAPTURE_ENABLE_QUALISYS "Enable Qualisys" OFF)
 option(LIBMOTIONCAPTURE_ENABLE_OPTITRACK "Enable Optitrack" OFF)
@@ -13,12 +18,13 @@ option(LIBMOTIONCAPTURE_ENABLE_FZMOTION "Enable FZMOTION" OFF)
 option(LIBMOTIONCAPTURE_ENABLE_MOTIONANALYSIS "Enable MotionAnalysis" ON)
 option(LIBMOTIONCAPTURE_BUILD_EXAMPLE "Enable Example application" ON)
 
-# Enable C++14
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+###############
+## Packages  ##
+###############
 
-find_package(Boost 1.5 COMPONENTS system REQUIRED) # for optitrack
+find_package(catkin REQUIRED)
+
+find_package(Boost 1.5 COMPONENTS system REQUIRED)
 add_definitions(
   -DBOOST_DATE_TIME_NO_LIB
   -DBOOST_REGEX_NO_LIB
@@ -27,6 +33,16 @@ add_definitions(
 
 find_package(Eigen3 REQUIRED)
 
+catkin_package(
+  INCLUDE_DIRS include
+  LIBRARIES libmotioncapture
+  DEPENDS Boost EIGEN3
+)
+
+###############
+## Deps Dirs ##
+###############
+
 set(VICON_SDK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/vicon-datastream-sdk/)
 set(QUALISYS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/qualisys_cpp_sdk/)
 set(NATNET_SDK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/NatNetSDKCrossplatform/)
@@ -34,16 +50,15 @@ set(NOKOV_SDK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/nokov_sdk/)
 set(VRPN_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/vrpn/)
 set(MOTIONANALYSIS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/cortex_sdk_linux/)
 
-
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ###########
 ## Build ##
 ###########
 
-## Additional include folders
 set(my_include_directories
   include
+  ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
@@ -76,9 +91,6 @@ if (LIBMOTIONCAPTURE_ENABLE_OPTITRACK)
   message("including optitrack")
 
   add_definitions(-DENABLE_OPTITRACK)
-  set(my_include_directories
-    ${my_include_directories}
-  )
   set(my_files
     ${my_files}
     src/optitrack.cpp
@@ -148,9 +160,9 @@ if (LIBMOTIONCAPTURE_ENABLE_NOKOV)
   )
 
   if (${ARCHITECTURE} MATCHES "arm")
-    set(my_link_directories ${my_link_directories} ${NOKOV_SDK_DIR}/lib/armhf)    
+    set(my_link_directories ${my_link_directories} ${NOKOV_SDK_DIR}/lib/armhf)
   elseif (${ARCHITECTURE} MATCHES "aarch")
-    set(my_link_directories ${my_link_directories} ${NOKOV_SDK_DIR}/lib/aarch64)  
+    set(my_link_directories ${my_link_directories} ${NOKOV_SDK_DIR}/lib/aarch64)
   else()
     set(my_link_directories ${my_link_directories} ${NOKOV_SDK_DIR}/lib/x64)
   endif()
@@ -221,22 +233,47 @@ add_library(libmotioncapture
   ${my_files}
 )
 
-## Specify libraries to link a library or executable target against
 target_link_directories(libmotioncapture PUBLIC
   ${my_link_directories}
 )
 target_link_libraries(libmotioncapture
+  ${catkin_LIBRARIES}
   ${my_libraries}
 )
 set_property(TARGET libmotioncapture PROPERTY POSITION_INDEPENDENT_CODE ON)
 
+#############
+## Install ##
+#############
+
+install(TARGETS libmotioncapture
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+)
+
+install(DIRECTORY include/libmotioncapture/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+)
+
+catkin_install_python(PROGRAMS
+  scripts/mocap_bridge.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
+
+#####################
+## Python Bindings ##
+#####################
+
 if (LIBMOTIONCAPTURE_BUILD_PYTHON_BINDINGS)
-  # Python bindings
-  find_package (Python3 COMPONENTS Interpreter Development)
+  find_package(Python3 COMPONENTS Interpreter Development)
 
   add_subdirectory(deps/pybind11 EXCLUDE_FROM_ALL)
-  # find_package(Python COMPONENTS Interpreter Development)
-  # find_package(pybind11 CONFIG)
 
   pybind11_add_module(motioncapture
     src/python_bindings.cpp
@@ -246,7 +283,34 @@ if (LIBMOTIONCAPTURE_BUILD_PYTHON_BINDINGS)
     PRIVATE
       libmotioncapture
   )
+
+  set(PYTHON_INSTALL_DIR ${CATKIN_GLOBAL_PYTHON_DESTINATION}/motioncapture_ros)
+
+  # Copy to devel space so it works without 'catkin_make install'
+  set(DEVEL_PYTHON_DIR ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_PYTHON_DESTINATION}/motioncapture_ros)
+  file(MAKE_DIRECTORY ${DEVEL_PYTHON_DIR})
+
+  add_custom_command(TARGET motioncapture POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+      $<TARGET_FILE:motioncapture>
+      ${DEVEL_PYTHON_DIR}/
+    COMMAND ${CMAKE_COMMAND} -E copy
+      ${CMAKE_CURRENT_SOURCE_DIR}/motioncapture_ros/__init__.py
+      ${DEVEL_PYTHON_DIR}/__init__.py
+    COMMENT "Copying Python bindings to devel space"
+  )
+
+  install(TARGETS motioncapture
+    LIBRARY DESTINATION ${PYTHON_INSTALL_DIR}
+  )
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/motioncapture_ros/__init__.py
+    DESTINATION ${PYTHON_INSTALL_DIR}
+  )
 endif()
+
+#############
+## Example ##
+#############
 
 if (LIBMOTIONCAPTURE_BUILD_EXAMPLE)
   add_executable(motioncapture_example
@@ -255,6 +319,4 @@ if (LIBMOTIONCAPTURE_BUILD_EXAMPLE)
   target_link_libraries(motioncapture_example
     libmotioncapture
   )
-
 endif()
-
