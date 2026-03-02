@@ -5,6 +5,6 @@
         <param name="type" value="motionanalysis" />
         <param name="topic_name" value="/mavros/vision_pose/pose" />
         <param name="max_radius" value="3.0" />
-        <param name="fps" value="15.0" />
+        <param name="fps" value="50.0" />
     </node>
 </launch>

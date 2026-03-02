@@ -8,7 +8,7 @@ from geometry_msgs.msg import PoseStamped
 def run():
     rospy.init_node("mocap_bridge_py")
 
-    mocap_ip = rospy.get_param("~hostname", "127.0.0.1")
+    mocap_ip = rospy.get_param("~hostname", "202.169.1.100")
     mocap_type = rospy.get_param("~type", "motionanalysis")
     pub_topic = rospy.get_param("~topic_name", "/mavros/vision_pose/pose")
     max_radius = rospy.get_param("~max_radius", 3.0)

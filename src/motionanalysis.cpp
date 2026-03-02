@@ -75,8 +75,9 @@ MotionCaptureMotionAnalysis::MotionCaptureMotionAnalysis(
   Cortex_SetErrorMsgHandlerFunc(ErrorMsgHandler);
   Cortex_SetDataHandlerFunc(DataHandler);
 
-  retval =
-      Cortex_Initialize(hostname.c_str(), nullptr, cortex_port, multicast_port);
+  //retval =
+  //    Cortex_Initialize(hostname.c_str(), nullptr, cortex_port, multicast_port);
+  retval = Cortex_Initialize("", "202.169.1.100", cortex_port, multicast_port);
 
   if (retval != RC_Okay) {
     std::stringstream sstr;
