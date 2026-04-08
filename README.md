@@ -1,4 +1,4 @@
-[![CI](https://github.com/LiCS-KARPE/libmotioncapture/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/LiCS-KARPE/libmotioncapture/actions/workflows/CI.yml)
+[![CI](https://github.com/9iant/libmotioncapture/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/9iant/libmotioncapture/actions/workflows/CI.yml)
 
 # libmotioncapture
 
@@ -27,7 +27,7 @@ ROS2 environment (Humble/Jazzy or compatible) and `colcon` are required.
 ```bash
 mkdir -p ~/mocap_ws/src
 cd ~/mocap_ws/src
-git clone https://github.com/LiCS-KARPE/libmotioncapture.git
+git clone https://github.com/9iant/libmotioncapture.git
 
 cd libmotioncapture
 git submodule update --init
