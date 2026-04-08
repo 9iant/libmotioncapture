@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
     <name>libmotioncapture</name>
     <version>1.0.0</version>
     <description>
@@ -12,7 +12,7 @@
 
     <url type="repository">https://github.com/LiCS-KARPE/libmotioncapture</url>
 
-    <buildtool_depend>catkin</buildtool_depend>
+    <buildtool_depend>ament_cmake</buildtool_depend>
 
     <build_depend>eigen</build_depend>
     <build_depend>boost</build_depend>
@@ -26,10 +26,11 @@
     <build_depend>python3-pybind11</build_depend>
     <exec_depend>python3-numpy</exec_depend>
 
-    <exec_depend>rospy</exec_depend>
+    <exec_depend>rclpy</exec_depend>
     <exec_depend>geometry_msgs</exec_depend>
+    <exec_depend>launch_ros</exec_depend>
 
     <export>
-        <!-- This tag is required for catkin to recognize this as a catkin package -->
+        <build_type>ament_cmake</build_type>
     </export>
 </package>

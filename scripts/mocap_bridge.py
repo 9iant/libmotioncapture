@@ -1,59 +1,63 @@
 #!/usr/bin/env python3
-import rospy
-import motioncapture_ros as motioncapture
 import numpy as np
+import rclpy
 from geometry_msgs.msg import PoseStamped
+from rclpy.node import Node
+
+import motioncapture_ros as motioncapture
 
 
-def run():
-    rospy.init_node("mocap_bridge_py")
+class MocapBridgeNode(Node):
+    def __init__(self):
+        super().__init__("mocap_bridge_py")
 
-    mocap_ip = rospy.get_param("~hostname", "127.0.0.1")
-    mocap_type = rospy.get_param("~type", "motionanalysis")
-    pub_topic = rospy.get_param("~topic_name", "/mavros/vision_pose/pose")
-    max_radius = rospy.get_param("~max_radius", 3.0)
-    target_fps = rospy.get_param("~fps", 15.0)
+        self.declare_parameter("hostname", "127.0.0.1")
+        self.declare_parameter("type", "motionanalysis")
+        self.declare_parameter("topic_name", "/mavros/vision_pose/pose")
+        self.declare_parameter("max_radius", 3.0)
+        self.declare_parameter("fps", 15.0)
 
-    min_interval = 1.0 / target_fps
-    last_pub_time = 0.0
+        self.mocap_ip = str(self.get_parameter("hostname").value)
+        self.mocap_type = str(self.get_parameter("type").value)
+        self.pub_topic = str(self.get_parameter("topic_name").value)
+        self.max_radius = float(self.get_parameter("max_radius").value)
+        self.target_fps = float(self.get_parameter("fps").value)
 
-    pose_pub = rospy.Publisher(pub_topic, PoseStamped, queue_size=1)
+        self.min_interval = 1.0 / self.target_fps if self.target_fps > 0.0 else 0.0
+        self.last_pub_time = 0.0
 
-    cfg = {
-        "hostname": mocap_ip,
-        "cortex_port": "1510",
-        "multicast_port": "1511",
-    }
+        self.pose_pub = self.create_publisher(PoseStamped, self.pub_topic, 10)
 
-    try:
-        mc = motioncapture.connect(mocap_type, cfg)
-    except Exception as e:
-        rospy.logerr(f"Connection Failed: {e}")
-        return
+        cfg = {
+            "hostname": self.mocap_ip,
+            "cortex_port": "1510",
+            "multicast_port": "1511",
+        }
 
-    rospy.loginfo(
-        f"Connected to {mocap_type} @ {mocap_ip}, "
-        f"publishing to '{pub_topic}' at max {target_fps} Hz"
-    )
+        self.mc = motioncapture.connect(self.mocap_type, cfg)
+        self.get_logger().info(
+            f"Connected to {self.mocap_type} @ {self.mocap_ip}, "
+            f"publishing to '{self.pub_topic}' at max {self.target_fps} Hz"
+        )
 
-    while not rospy.is_shutdown():
-        mc.waitForNextFrame()
+    def step(self):
+        self.mc.waitForNextFrame()
 
-        current_time = rospy.get_time()
-        if (current_time - last_pub_time) < min_interval:
-            continue
+        current_time = self.get_clock().now().nanoseconds * 1e-9
+        if (current_time - self.last_pub_time) < self.min_interval:
+            return
 
-        last_pub_time = current_time
+        self.last_pub_time = current_time
 
-        for name, obj in mc.rigidBodies.items():
+        for _, obj in self.mc.rigidBodies.items():
             pos_m = obj.position
             distance = np.linalg.norm(pos_m)
 
-            if distance > max_radius:
+            if distance > self.max_radius:
                 continue
 
             msg = PoseStamped()
-            msg.header.stamp = rospy.Time.now()
+            msg.header.stamp = self.get_clock().now().to_msg()
             msg.header.frame_id = "map"
 
             msg.pose.position.x = pos_m[0]
@@ -65,11 +69,29 @@ def run():
             msg.pose.orientation.z = obj.rotation.z
             msg.pose.orientation.w = obj.rotation.w
 
-            pose_pub.publish(msg)
+            self.pose_pub.publish(msg)
+
+
+def run():
+    rclpy.init()
+    node = None
+
+    try:
+        node = MocapBridgeNode()
+
+        while rclpy.ok():
+            node.step()
+            rclpy.spin_once(node, timeout_sec=0.0)
+    except Exception as e:
+        if node is not None:
+            node.get_logger().error(f"Connection Failed: {e}")
+        else:
+            print(f"Connection Failed: {e}")
+    finally:
+        if node is not None:
+            node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":
-    try:
-        run()
-    except rospy.ROSInterruptException:
-        pass
+    run()

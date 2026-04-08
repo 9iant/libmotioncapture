@@ -9,7 +9,7 @@ Supports Motion Analysis (Cortex), Vicon, OptiTrack, Qualisys, VRPN, Nokov, FZMo
 This is a fork of [IMRCLab/libmotioncapture](https://github.com/IMRCLab/libmotioncapture/) with the following changes:
 
 - Added Motion Analysis (Cortex) SDK support
-- Added ROS (catkin) integration with `mocap_bridge` node
+- Added ROS2 (ament) integration with `mocap_bridge` node
 - Added Python bindings as `motioncapture_ros` ROS package
 - Removed unused submodules
 - Fixed orientation calculation
@@ -18,7 +18,7 @@ This is a fork of [IMRCLab/libmotioncapture](https://github.com/IMRCLab/libmotio
 
 ```
 libmotioncapture/
-├── CMakeLists.txt            # catkin build configuration
+├── CMakeLists.txt            # ament build configuration
 ├── package.xml               # ROS package manifest
 ├── version                   # version string ("1.0")
 ├── deps/                     # external dependencies (git submodules)
@@ -43,7 +43,7 @@ libmotioncapture/
 ├── scripts/
 │   └── mocap_bridge.py       # ROS node: publishes PoseStamped
 ├── launch/
-│   └── mocap_bridge.launch   # ROS launch file
+│   └── mocap_bridge.launch.py # ROS2 launch file
 └── motioncapture_ros/
     └── __init__.py            # Python package wrapper
 ```
@@ -54,9 +54,9 @@ libmotioncapture/
 sudo apt install libboost-system-dev libboost-thread-dev libeigen3-dev
 ```
 
-ROS 1 (Noetic 등) 및 catkin 빌드 환경이 필요합니다.
+ROS2 (Humble/Jazzy 등) 및 colcon 빌드 환경이 필요합니다.
 
-## Build (catkin)
+## Build (colcon / ROS2)
 
 ```bash
 # 워크스페이스 생성 (이미 있다면 생략)
@@ -71,8 +71,8 @@ git submodule update
 
 # 빌드
 cd ~/mocap_ws
-catkin_make
-source devel/setup.bash
+colcon build --symlink-install
+source install/setup.bash
 ```
 
 ### CMake Options
@@ -93,15 +93,15 @@ source devel/setup.bash
 예시 — Vicon도 함께 활성화:
 
 ```bash
-catkin_make -DLIBMOTIONCAPTURE_ENABLE_VICON=ON
+colcon build --symlink-install --cmake-args -DLIBMOTIONCAPTURE_ENABLE_VICON=ON
 ```
 
 ## Usage
 
-### ROS Launch
+### ROS2 Launch
 
 ```bash
-roslaunch libmotioncapture mocap_bridge.launch
+ros2 launch libmotioncapture mocap_bridge.launch.py
 ```
 
 Launch 파라미터:
@@ -125,7 +125,7 @@ python3 examples/python.py motionanalysis 127.0.0.1
 빌드 후:
 
 ```bash
-devel/lib/libmotioncapture/motioncapture_example motionanalysis 127.0.0.1
+install/lib/libmotioncapture/motioncapture_example motionanalysis 127.0.0.1
 ```
 
 ## License

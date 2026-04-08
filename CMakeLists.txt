@@ -22,7 +22,7 @@ option(LIBMOTIONCAPTURE_BUILD_EXAMPLE "Enable Example application" ON)
 ## Packages  ##
 ###############
 
-find_package(catkin REQUIRED)
+find_package(ament_cmake REQUIRED)
 
 find_package(Boost 1.5 COMPONENTS system REQUIRED)
 add_definitions(
@@ -33,11 +33,7 @@ add_definitions(
 
 find_package(Eigen3 REQUIRED)
 
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES libmotioncapture
-  DEPENDS Boost EIGEN3
-)
+include(GNUInstallDirs)
 
 ###############
 ## Deps Dirs ##
@@ -58,7 +54,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(my_include_directories
   include
-  ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
@@ -237,7 +232,6 @@ target_link_directories(libmotioncapture PUBLIC
   ${my_link_directories}
 )
 target_link_libraries(libmotioncapture
-  ${catkin_LIBRARIES}
   ${my_libraries}
 )
 set_property(TARGET libmotioncapture PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -247,23 +241,23 @@ set_property(TARGET libmotioncapture PROPERTY POSITION_INDEPENDENT_CODE ON)
 #############
 
 install(TARGETS libmotioncapture
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 install(DIRECTORY include/libmotioncapture/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libmotioncapture
   FILES_MATCHING PATTERN "*.h"
 )
 
-catkin_install_python(PROGRAMS
+install(PROGRAMS
   scripts/mocap_bridge.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY launch/
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+  DESTINATION share/${PROJECT_NAME}/launch
 )
 
 #####################
@@ -284,20 +278,8 @@ if (LIBMOTIONCAPTURE_BUILD_PYTHON_BINDINGS)
       libmotioncapture
   )
 
-  set(PYTHON_INSTALL_DIR ${CATKIN_GLOBAL_PYTHON_DESTINATION}/motioncapture_ros)
-
-  # Copy to devel space so it works without 'catkin_make install'
-  set(DEVEL_PYTHON_DIR ${CATKIN_DEVEL_PREFIX}/${CATKIN_GLOBAL_PYTHON_DESTINATION}/motioncapture_ros)
-  file(MAKE_DIRECTORY ${DEVEL_PYTHON_DIR})
-
-  add_custom_command(TARGET motioncapture POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-      $<TARGET_FILE:motioncapture>
-      ${DEVEL_PYTHON_DIR}/
-    COMMAND ${CMAKE_COMMAND} -E copy
-      ${CMAKE_CURRENT_SOURCE_DIR}/motioncapture_ros/__init__.py
-      ${DEVEL_PYTHON_DIR}/__init__.py
-    COMMENT "Copying Python bindings to devel space"
+  set(PYTHON_INSTALL_DIR
+    ${CMAKE_INSTALL_LIBDIR}/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages/motioncapture_ros
   )
 
   install(TARGETS motioncapture
@@ -320,3 +302,8 @@ if (LIBMOTIONCAPTURE_BUILD_EXAMPLE)
     libmotioncapture
   )
 endif()
+
+ament_export_include_directories(include)
+ament_export_libraries(libmotioncapture)
+ament_export_dependencies(Boost Eigen3)
+ament_package()
